@@ -180,7 +180,7 @@ on_message_publish(Message = #mqtt_message{topic = Topic}, {Filter}) ->
                   {topic, Message#mqtt_message.topic},
                   {qos, Message#mqtt_message.qos},
                   {retain, Message#mqtt_message.retain},
-                  {payload, Message#mqtt_message.payload},
+                  {payload, payload_to_json(Message#mqtt_message.payload)},
                   {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)}],
         send_http_request(Params),
         {ok, Message}
@@ -201,7 +201,7 @@ on_message_delivered(ClientId, Username, Message = #mqtt_message{topic = Topic},
                   {topic, Message#mqtt_message.topic},
                   {qos, Message#mqtt_message.qos},
                   {retain, Message#mqtt_message.retain},
-                  {payload, Message#mqtt_message.payload},
+                  {payload, payload_to_json(Message#mqtt_message.payload)},
                   {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)}],
         send_http_request(Params)
     end, Topic, Filter).
@@ -221,7 +221,7 @@ on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic}, {Fi
                   {topic, Message#mqtt_message.topic},
                   {qos, Message#mqtt_message.qos},
                   {retain, Message#mqtt_message.retain},
-                  {payload, Message#mqtt_message.payload},
+                  {payload, payload_to_json(Message#mqtt_message.payload)},
                   {ts, emqttd_time:now_secs(Message#mqtt_message.timestamp)}],
         send_http_request(Params)
     end, Topic, Filter).
@@ -229,6 +229,13 @@ on_message_acked(ClientId, Username, Message = #mqtt_message{topic = Topic}, {Fi
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
+
+payload_to_json(Payload) ->
+    case catch mochijson2:encode(Payload) of
+        % return null if payload can't be converted into json (binary for exemple)
+        {'EXIT', _} -> null;
+        Result -> Result
+    end.
 
 send_http_request(Params) ->
     Params1 = iolist_to_binary(mochijson2:encode(Params)),
